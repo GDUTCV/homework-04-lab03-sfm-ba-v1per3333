@@ -44,8 +44,22 @@ def compute_ba_residuals(parameters: np.ndarray, intrinsics: np.ndarray, num_cam
     NOTE: DO NOT USE LOOPS 
     HINT: I used np.matmul; np.sum; np.sqrt; np.square, np.concatenate etc.
     """
-    
+    selected_points3d = points3d[points3d_idxs]  # 根据索引选择3D点
 
-    
+    # 将3D点转换为齐次坐标（加一维为1）
+    homo_3d_points = np.concatenate((selected_points3d, np.ones((selected_points3d.shape[0], 1))), axis=1)
+    homo_3d_points_T = np.transpose(homo_3d_points)  # 转置齐次3D点
+
+    selected_extrinsics = extrinsics[camera_idxs]  # 根据相机索引选择外参矩阵
+    P = np.matmul(intrinsics, selected_extrinsics)  # 计算投影矩阵
+
+    # 计算2D投影点
+    calculated_points2d = np.einsum('ijk,ki->ij', P, homo_3d_points_T)
+    calculated_points2d /= calculated_points2d[:, -1].reshape((calculated_points2d.shape[0], 1))  # 归一化
+    calculated_points2d = calculated_points2d[:, :-1]  # 去掉齐次坐标的最后一维
+
+    # 计算残差：2D点与计算的2D投影点的欧几里得距离
+    residuals = np.linalg.norm(points2d - calculated_points2d, axis=1)
+
     """ END YOUR CODE HERE """
     return residuals
